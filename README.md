@@ -1,0 +1,1 @@
+# Mimikatz-Detection-in-Splunk
