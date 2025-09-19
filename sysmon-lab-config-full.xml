@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>SHA1</HashAlgorithms>
+
+  <EventFiltering>
+
+    <!-- PROCESS CREATE (Event ID 1) -->
+    <RuleGroup name="ProcessCreate" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <Image condition="end with">.exe</Image>
+
+        <!-- Exclude OS system binaries -->
+        <Image condition="excludes any">C:\Windows\System32\</Image>
+        <Image condition="excludes any">C:\Windows\SysWOW64\</Image>
+
+        <!-- SPLUNK EXCLUSIONS -->
+        <Image condition="excludes any">C:\Program Files\Splunk\</Image>
+        <Image condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</Image>
+        <Image condition="excludes any">splunkd.exe</Image>
+        <Image condition="excludes any">splunk.exe</Image>
+        <Image condition="excludes any">splunkforwarder.exe</Image>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- IMAGE LOAD (Event ID 7) -->
+    <RuleGroup name="ImageLoad" groupRelation="or">
+      <ImageLoad onmatch="include">
+        <!-- watch dll loads (tuned to show suspicious loads that may indicate injection) -->
+        <ImageLoaded condition="end with">.dll</ImageLoaded>
+
+        <!-- focus on loads related to high value processes by filtering on common loaded module names -->
+        <ImageLoaded condition="excludes any">C:\Program Files\Splunk\</ImageLoaded>
+        <ImageLoaded condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</ImageLoaded>
+        <ImageLoaded condition="excludes any">splunkd.exe</ImageLoaded>
+        <ImageLoaded condition="excludes any">splunk.exe</ImageLoaded>
+      </ImageLoad>
+    </RuleGroup>
+
+    <!-- NETWORK CONNECT (Event ID 3) - LOG ALL OUTBOUND (lab use) -->
+    <RuleGroup name="NetworkConnect" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- include all connection-generating executables (this will capture outbound HTTP from Kali Apache) -->
+        <Image condition="end with">.exe</Image>
+      </NetworkConnect>
+
+      <!-- Exclude Splunk process image noise from NetworkConnect -->
+      <NetworkConnect onmatch="exclude">
+        <Image condition="begin with">C:\Program Files\Splunk\</Image>
+        <Image condition="begin with">C:\Program Files\SplunkUniversalForwarder\</Image>
+        <Image condition="end with">splunkd.exe</Image>
+        <Image condition="end with">splunk.exe</Image>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- CREATE REMOTE THREAD (Event ID 8) -->
+    <RuleGroup name="CreateRemoteThread" groupRelation="or">
+      <CreateRemoteThread onmatch="include">
+        <SourceImage condition="excludes any">C:\Windows\System32\</SourceImage>
+        <SourceImage condition="excludes any">C:\Windows\SysWOW64\</SourceImage>
+        <SourceImage condition="excludes any">C:\Program Files\Splunk\</SourceImage>
+        <SourceImage condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</SourceImage>
+        <SourceImage condition="excludes any">splunkd.exe</SourceImage>
+      </CreateRemoteThread>
+    </RuleGroup>
+
+    <!-- RAW ACCESS READ (Event ID 9) -->
+    <RuleGroup name="RawAccessRead" groupRelation="or">
+      <RawAccessRead onmatch="include">
+        <Image condition="excludes any">C:\Windows\System32\</Image>
+        <Image condition="excludes any">C:\Windows\SysWOW64\</Image>
+        <Image condition="excludes any">C:\Program Files\Splunk\</Image>
+        <Image condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</Image>
+        <Image condition="excludes any">splunkd.exe</Image>
+      </RawAccessRead>
+    </RuleGroup>
+
+    <!-- PROCESS ACCESS (Event ID 10) -->
+    <RuleGroup name="ProcessAccess" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <!-- High-value targets -->
+        <TargetImage condition="end with">lsass.exe</TargetImage>
+        <TargetImage condition="end with">winlogon.exe</TargetImage>
+        <TargetImage condition="end with">services.exe</TargetImage>
+        <TargetImage condition="end with">explorer.exe</TargetImage>
+        <TargetImage condition="end with">svchost.exe</TargetImage>
+
+        <!-- Exclude known-good system and Splunk sources -->
+        <SourceImage condition="excludes any">C:\Windows\System32\</SourceImage>
+        <SourceImage condition="excludes any">C:\Windows\SysWOW64\</SourceImage>
+        <SourceImage condition="excludes any">C:\Program Files\Splunk\</SourceImage>
+        <SourceImage condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</SourceImage>
+        <SourceImage condition="excludes any">splunkd.exe</SourceImage>
+        <SourceImage condition="excludes any">splunk.exe</SourceImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <!-- FILE CREATE (Event ID 11) -->
+    <RuleGroup name="FileCreate" groupRelation="or">
+      <FileCreate onmatch="include">
+        <!-- include common download locations -->
+        <TargetFilename condition="contains">C:\Users\</TargetFilename>
+        <TargetFilename condition="contains">Downloads\</TargetFilename>
+        <TargetFilename condition="contains">C:\Temp\</TargetFilename>
+
+        <!-- continue to exclude Windows and Splunk folders -->
+        <TargetFilename condition="excludes any">C:\Windows\</TargetFilename>
+        <TargetFilename condition="excludes any">C:\Program Files\Splunk\</TargetFilename>
+        <TargetFilename condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- FILE CREATE STREAM HASH (Event ID 14-ish) -->
+    <RuleGroup name="FileCreateStreamHash" groupRelation="or">
+      <FileCreateStreamHash onmatch="include">
+        <TargetFilename condition="contains">C:\Users\</TargetFilename>
+        <TargetFilename condition="contains">Downloads\</TargetFilename>
+        <TargetFilename condition="contains">C:\Temp\</TargetFilename>
+      </FileCreateStreamHash>
+    </RuleGroup>
+
+    <!-- REGISTRY SET VALUE (Event ID 12) -->
+    <RuleGroup name="RegistryEvent" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="begin with">HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="begin with">HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="begin with">HKLM\SYSTEM\CurrentControlSet\Services</TargetObject>
+        <TargetObject condition="contains">ImagePath</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- DRIVER LOAD (Event ID 6) -->
+    <RuleGroup name="DriverLoad" groupRelation="or">
+      <DriverLoad onmatch="include">
+        <ImageLoaded condition="excludes any">C:\Windows\System32\drivers\</ImageLoaded>
+        <ImageLoaded condition="excludes any">C:\Program Files\Splunk\</ImageLoaded>
+      </DriverLoad>
+    </RuleGroup>
+
+    <!-- PROCESS TERMINATE (Event ID 5) -->
+    <RuleGroup name="ProcessTerminate" groupRelation="or">
+      <ProcessTerminate onmatch="include">
+        <Image condition="end with">.exe</Image>
+        <Image condition="excludes any">C:\Program Files\Splunk\</Image>
+        <Image condition="excludes any">splunkd.exe</Image>
+      </ProcessTerminate>
+    </RuleGroup>
+
+    <!-- DNS QUERY (Event ID 22) -->
+    <RuleGroup name="DnsQuery" groupRelation="or">
+      <DnsQuery onmatch="include">
+        <!-- Include all DNS queries but exclude those generated by Splunk processes -->
+        <Image condition="excludes any">C:\Program Files\Splunk\</Image>
+        <Image condition="excludes any">C:\Program Files\SplunkUniversalForwarder\</Image>
+        <Image condition="excludes any">splunkd.exe</Image>
+        <Image condition="excludes any">splunk.exe</Image>
+      </DnsQuery>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>
