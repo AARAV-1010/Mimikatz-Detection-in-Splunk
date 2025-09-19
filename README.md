@@ -26,7 +26,7 @@ Effects observed in a lab:
 • In a lab, expect more 'external' connections to trusted lab servers — tune allowlists accordingly.
 
 
-The Config file of Sysmon used to detect mimikatz is here: [sysmon-config.xml](./sysmon-config.xml)
+The Config file of Sysmon used to detect mimikatz is here: [sysmon-config.xml](./sysmon-lab-config-full.xml)
 
 ### Execution of Mimikatz on a Client Machine
 Here in this lab, I have hosted the mimikatz.exe on Kali Linux Machine, it is being hosted on Apache server.
@@ -58,7 +58,7 @@ This runs the mimikatz.exe binary (from C:\Tools) with three arguments:
 
 
 Given below is output from mimikatz.
-[mimikatz-output.txt](./mimikatz-output.txt)
+[mimikatz-output.txt](./mimikatz_output.txt)
  
 This is the output of mimikatz here we can clearly see password of Administrator Account.
 
